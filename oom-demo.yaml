@@ -1,0 +1,42 @@
+# oom-demo.yaml
+# A deliberately under-provisioned workload that OOMKill-loops on purpose.
+# The container tries to hold ~150Mi of memory but is capped at 64Mi, so the
+# kernel OOM-kills it, Kubernetes restarts it, and it crash-loops forever.
+#
+# This is the "broken" state the self-healing agent fixes: Davis CoPilot reads
+# the live environment, decides the limit is too low, and opens a PR that raises
+# the single field marked below. Argo CD then syncs the merged change and the
+# pod recovers.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oom-demo
+  namespace: selfhealing-demo
+  labels:
+    app: oom-demo
+    demo: self-healing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oom-demo
+  template:
+    metadata:
+      labels:
+        app: oom-demo
+      annotations:
+        # Friendly metadata so it shows up cleanly in Dynatrace
+        metadata.dynatrace.com/release.product: "self-healing-demo"
+    spec:
+      containers:
+        - name: allocator
+          image: polinux/stress
+          # Holds ~150Mi -> exceeds the 64Mi limit below -> OOMKilled -> restart loop
+          args: ["stress", "--vm", "1", "--vm-bytes", "150M", "--vm-keep", "--timeout", "86400"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi   # <-- TOO LOW ON PURPOSE. The AI agent raises this value.
