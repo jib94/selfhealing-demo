@@ -39,4 +39,4 @@ spec:
               memory: 32Mi
             limits:
               cpu: 100m
-              memory: 64Mi   # <-- TOO LOW ON PURPOSE. The AI agent raises this value.
+              memory: 256Mi   # <-- TOO LOW ON PURPOSE. The AI agent raises this value.
